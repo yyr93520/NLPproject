@@ -3,6 +3,9 @@ import feature_extrac
 import sklearn
 import pickle
 import os
+import getopt
+import data_preprocess
+import sys
 
 from nltk.classify.scikitlearn import SklearnClassifier
 from sklearn.svm import SVC, LinearSVC, NuSVC
@@ -35,7 +38,7 @@ def train_model(classifier, name, printout = False):
 	predict = classifier.classify_many(testSam)
 	accuracy = accuracy_score(testTag, predict)
 	if printout:
-		print '*******Analysis Model %s*********' % name
+		print '*******模型: %s的测试结果*********' % name
 		print '\n'
 		print '%s`s accuracy is %f' % (name, accuracy)
 		print '%s`s score report is \n' % name
@@ -138,15 +141,15 @@ def valid_model():
 	train_model(LinearSVC(C = 6.005, intercept_scaling = 5.345), 'LinearSVC', printout = True)
 
 #根据所有模型训练的结果投票，投票后占多数的标签是最终的分类标签，输出最终的测试准确度分析结果
-def vote_model():
+def vote_model(printout = True, test = testSam):
 	predict_all = []
 	for parent, dirnames, filenames in os.walk(data_path):
 		for filename in filenames:
 			model_file = os.path.join(parent, filename)
 			classifier = pickle.load(open(model_file,'r'))
-			predict_all.append(classifier.classify_many(testSam))
+			predict_all.append(classifier.classify_many(test))
 	predict = []
-	for i in range(0, len(testSam)):
+	for i in range(0, len(test)):
 		pos_num = 0
 		neg_num = 0
 		for j in range(0, 5):
@@ -155,20 +158,62 @@ def vote_model():
 			else:
 				neg_num += 1
 		predict.append('pos' if pos_num > neg_num else 'neg')
-	print '*******Analysis Model Vote Result*********'
-	print '\n'
-	print 'accuracy is %f' % accuracy_score(testTag, predict)
-	print 'score report is \n'
-	print classification_report(testTag, predict)
-	print 'confusion is \n' 
-	print confusion_matrix(testTag, predict)
-	print '\n'	
+	if printout == True:
+		print '\n'
+		print '*******模型融合的最终测试结果*********'		
+		print '\n'
+		print '训练集：积极样本1414条，消极样本1722条'
+		print '测试集：积极样本354条，消极样本430条\n'
+		print 'accuracy is %f' % accuracy_score(testTag, predict)
+		print 'score report is \n'
+		print classification_report(testTag, predict)
+		print 'confusion is \n' 
+		print confusion_matrix(testTag, predict)
+		print '\n'	
+	return predict
+
+def get_model_tag(input_file, output_file):
+	words_list, text_list = data_preprocess.repre_test_data(input_file)
+	test_list = []
+	for words in words_list:
+		test_list.append(feature_extrac.best_word_features(words))
+	predict = vote_model(printout = False, test = test_list)
+	with open(output_file, 'w') as fout:
+		for i in range(0, len(predict)):
+			fout.write(predict[i] + ":  " + text_list[i] + "\n")
+	print '情感分析结果已写入到文件：%s\n' % output_file
+
+def usage():
+	print 'Usage:'
+	print 'python train_model.py [opts]'
+	print '-t input_file output_file: input_file给出测试数据文件（./data/input_file.txt），output_file给出结果文件（默认为./data/output_file.txt）'
+	print '-r: 输出模型融合的测试结果'
+	print '-d: 输出5个模型分别的测试结果'
 
 if __name__ == '__main__':
-	#valid_model()
-	#MultinomialNB_param()
-	#BernoulliNB_param()
-	#LinearSVC_param()
-	#LogisticRegression_param()
-	#RandomForestClassifier_param()
-	vote_model()
+	try:
+		opts, args = getopt.getopt(sys.argv[1:], 'rdt:', [])
+	except Exception, ex:
+		print ex
+		usage()
+		exit()
+	if len(opts) == 0:
+		usage()
+		exit()
+	for name, value in opts:
+		if name == '-r':
+			vote_model()
+		elif name == '-d':
+			valid_model()
+		elif name == '-t':
+			input_file = value
+			if len(args) > 0:
+				output_file = args[0]
+			else:
+				output_file = os.getcwd() + '/data/output_file.txt'
+			get_model_tag(input_file, output_file)
+		else:
+			usage()
+			exit()
+
+

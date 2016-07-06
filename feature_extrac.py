@@ -4,7 +4,6 @@ import os
 import pickle
 import data_preprocess
 import itertools
-import chardet
 from nltk.collocations import BigramCollocationFinder
 from nltk.metrics import BigramAssocMeasures
 from nltk.probability import FreqDist, ConditionalFreqDist
@@ -17,21 +16,6 @@ neg_word_pkl = os.path.join(data_path, 'neg_word_seq.pkl')
 global posWords
 global negWords
 global bestWords
-
-'''
-def bag_of_words(words):
-	return dict([(word,True) for word in words])
-
-def get_bigrams(words, score_fn=BigramAssocMeasures.chi_sq, n=1000):
-	bigram_finder = BigramCollocationFinder.from_words(words)
-	bigrams = bigram_finder.nbest(score_fn, n)
-	return bag_of_words(bigrams)
-
-def bigram_words(words, score_fn=BigramAssocMeasures.chi_sq, n=1000):
-	bigram_finder = BigramCollocationFinder.from_words(words)
-	bigrams = bigram_finder.nbest(score_fn, n)
-	return bag_of_words(words + bigrams)
-'''
 
 #将neg_data.txt、pos_data.txt写入pickle文件，方便再次读入
 def write_pickle_file(data_txt, word_pkl):
@@ -97,7 +81,7 @@ def create_word_bigram_scores():
 	return get_scores(pos, neg)
 
 #提取打分前number个词作为best word,并将积极情感和消极情感样本用特征表示
-def get_features(number = 1000):
+def get_features(number = 1500):
 	global bestWords
 	init_data()
 	#word_scores_1 = create_word_scores()
@@ -134,6 +118,9 @@ def neg_features(feature_extraction_func):
 #将样本词列表表示成字典的形式
 def best_word_features(words):
  	global bestWords
+ 	#print words
+ 	#print bestWords
+ 	#print dict([(word, True) for word in words if word in bestWords])
  	return dict([(word, True) for word in words if word in bestWords])
 
 if __name__ == '__main__':
